@@ -11,12 +11,22 @@ let draggedOrb = null;
 let isDragging = false;
 let dragOffsetX = 0;
 let dragOffsetY = 0;
+let dpr = window.devicePixelRatio || 1;
 
-// Resize Canvas
+// Resize Canvas with Retina/High-DPI Support
 function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight - document.querySelector('header').offsetHeight;
+    dpr = window.devicePixelRatio || 1;
+    const headerHeight = document.querySelector('header').offsetHeight;
+    const displayWidth = window.innerWidth;
+    const displayHeight = window.innerHeight - headerHeight;
+
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    
+    // Scale context to match pixel ratio
+    ctx.scale(dpr, dpr);
 }
+
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
@@ -58,9 +68,14 @@ function getContrastColor(hexColor) {
 // Orb Class Definition
 class Orb {
     constructor(x, y, label, color) {
-        this.x = x || Math.random() * (canvas.width - 100) + 50;
-        this.y = y || Math.random() * (canvas.height - 100) + 50;
-        this.radius = 50;
+        const logicalWidth = canvas.width / dpr;
+        const logicalHeight = canvas.height / dpr;
+
+        // Dynamic radius: smaller on mobile screens
+        this.radius = Math.min(logicalWidth, logicalHeight) < 500 ? 35 : 50;
+        this.x = x || Math.random() * (logicalWidth - this.radius * 2) + this.radius;
+        this.y = y || Math.random() * (logicalHeight - this.radius * 2) + this.radius;
+
         this.label = label;
         this.color = color;
         // Random floating speeds
@@ -71,24 +86,27 @@ class Orb {
     update() {
         if (draggedOrb === this) return; // Stop floating if user is dragging it
 
+        const logicalWidth = canvas.width / dpr;
+        const logicalHeight = canvas.height / dpr;
+
         // Update position
         this.x += this.vx;
         this.y += this.vy;
 
         // Wall collisions (Bounce effect)
-        if (this.x - this.radius < 0 || this.x + this.radius > canvas.width) {
+        if (this.x - this.radius < 0 || this.x + this.radius > logicalWidth) {
             this.vx *= -1;
-            this.x = this.x - this.radius < 0 ? this.radius : canvas.width - this.radius;
+            this.x = this.x - this.radius < 0 ? this.radius : logicalWidth - this.radius;
         }
-        if (this.y - this.radius < 0 || this.y + this.radius > canvas.height) {
+        if (this.y - this.radius < 0 || this.y + this.radius > logicalHeight) {
             this.vy *= -1;
-            this.y = this.y - this.radius < 0 ? this.radius : canvas.height - this.radius;
+            this.y = this.y - this.radius < 0 ? this.radius : logicalHeight - this.radius;
         }
     }
 
     draw() {
         // Outer glow shadow
-        ctx.shadowBlur = 20;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = this.color;
 
         // Radial gradient for orb aesthetic
@@ -108,7 +126,7 @@ class Orb {
         // Dynamically set text color based on orb background brightness
         ctx.fillStyle = getContrastColor(this.color); 
 
-        ctx.font = 'bold 14px Arial'; // Made it bold for extra readability
+        ctx.font = `bold ${this.radius < 40 ? 11 : 14}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -149,20 +167,22 @@ function createOrb() {
     
     saveOrbs();
     emotionInput.value = '';
+    emotionInput.blur(); // Dismisses mobile keyboard
 }
 
-// Mouse Events for Dragging
-function getMousePos(e) {
+// Unified Pointer Position Helper (Mouse & Touch)
+function getPointerPos(e) {
     const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+        x: clientX - rect.left,
+        y: clientY - rect.top
     };
 }
 
-canvas.addEventListener('mousedown', (e) => {
-    const pos = getMousePos(e);
-    // Check backwards to select top-most orb if they overlap
+function handleStart(e) {
+    const pos = getPointerPos(e);
     for (let i = orbs.length - 1; i >= 0; i--) {
         const orb = orbs[i];
         const dist = Math.hypot(pos.x - orb.x, pos.y - orb.y);
@@ -174,24 +194,32 @@ canvas.addEventListener('mousedown', (e) => {
             break;
         }
     }
-});
+}
 
-canvas.addEventListener('mousemove', (e) => {
+function handleMove(e) {
     if (!isDragging || !draggedOrb) return;
-    const pos = getMousePos(e);
+    const pos = getPointerPos(e);
     draggedOrb.x = pos.x - dragOffsetX;
     draggedOrb.y = pos.y - dragOffsetY;
-});
+}
 
-window.addEventListener('mouseup', () => {
+function handleEnd() {
     if (isDragging) {
-        saveOrbs(); // Save updated positions on drop
+        saveOrbs();
     }
     isDragging = false;
     draggedOrb = null;
-});
+}
 
-// Button Event Handlers
+// Event Listeners (Mouse + Touch)
+canvas.addEventListener('mousedown', handleStart);
+canvas.addEventListener('mousemove', handleMove);
+window.addEventListener('mouseup', handleEnd);
+
+canvas.addEventListener('touchstart', handleStart, { passive: true });
+canvas.addEventListener('touchmove', handleMove, { passive: true });
+window.addEventListener('touchend', handleEnd);
+
 addOrbBtn.addEventListener('click', createOrb);
 emotionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') createOrb(); });
 
@@ -202,9 +230,11 @@ clearBtn.addEventListener('click', () => {
     }
 });
 
-// Animation Loop
 function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const logicalWidth = canvas.width / dpr;
+    const logicalHeight = canvas.height / dpr;
+
+    ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     
     orbs.forEach(orb => {
         orb.update();
