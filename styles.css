@@ -14,58 +14,89 @@ body {
 }
 header {
     background: rgba(255, 255, 255, 0.05);
-    padding: 15px 20px;
+    padding: 12px 16px;
     backdrop-filter: blur(10px);
     z-index: 10;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-wrap: wrap;
+    gap: 10px;
 }
+
+h1 {
+    font-size: 1.4rem;
+}
+
 .controls {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
 }
+
+@media (min-width: 600px) {
+    .controls {
+        width: auto;
+    }
+}
+
+
 input[type="text"] {
     background: #202024;
     border: 1px solid #323238;
     color: white;
-    padding: 8px 12px;
+    padding: 10px 12px;
     border-radius: 6px;
     outline: none;
+    flex: 1;
+    min-width: 130px;
+    font-size: 16px; /* Prevents auto-zoom on iOS safari */
 }
+
 input[type="color"] {
     border: none;
     background: transparent;
     width: 40px;
     height: 40px;
     cursor: pointer;
+    flex-shrink: 0;
 }
+
 button {
     background: #C068BA;
     color: #fff;
     border: none;
-    padding: 8px 16px;
+    padding: 10px 14px;
     border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
     transition: background 0.2s;
+    font-size: 14px;
+    touch-action: manipulation;
 }
+
 button:hover {
     background: #C484C3;
 }
+
 button.clear-btn {
     background: #6D0008;
 }
+
 button.clear-btn:hover {
     background: #F29BA8;
 }
+
 canvas {
     flex-grow: 1;
     display: block;
     cursor: grab;
+    touch-action: none; /* Prevents touch scrolling on canvas */
 }
+
 canvas:active {
     cursor: grabbing;
 }
